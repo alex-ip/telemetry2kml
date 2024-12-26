@@ -1,0 +1,210 @@
+# Global settings
+#global_settings:
+#  debug: false
+#  log_file: null #"/tmp/kml_server.log"
+#  memcached_endpoint: null #"kml-server-memcached.zetxvg.cfg.apse2.cache.amazonaws.com:11211" # set to None to not use memcached
+#  cache_images: true # Set this to false to get images from NCI WMS endpoints
+#  cache_coordinates: true # Set this to true to cache coordinates and lines on local disk
+#  http_compression: true # Set this to false for local use, true for remote
+#  compress_level: 6 # 6 = Maximum HTTP compression level
+#  compress_min_size: 2000 # Don"t bother compressing small KML responses
+#  # Define number of line segments to show across bounding box height for line sub-sampling
+#  line_segments_across_bbox: 50 # Maximum number of line segments to show across bounding box
+#  cache_root_dir: "C:\Temp" #"/tmp" # Root directory for disk cache (if enabled)
+#  #host: "0.0.0.0" # Comment this out for normal local host testing
+#  #http_proxy: "http://127.0.0.1:8888" # Comment this out for normal local host testing
+#  s3_bucket_name: null
+#  database_engine: SQLite # SQLite or Postgres
+#  database_settings: # Settings for different database engines (constructor parameters)
+#    SQLite:
+#      sqlite_path: "data/dataset_metadata_cache.sqlite"
+#    Postgres:
+#      postgres_host: "localhost"
+#      postgres_port: 5432
+#      postgres_dbname: "dataset_metadata_cache"
+#      postgres_user: "db_user"
+#      postgres_password: "db_password"
+
+## Default dataset settings
+#default_dataset_settings:
+#  dataset_link: null
+#  filtered_point_icon_color: ff000000
+#  height_variable: null
+#  line_color: ff32cd9a
+#  line_width: 5
+#  point_color_settings: ff32cd9a
+#  point_field_list: null
+#  point_icon_href: "http://maps.google.com/mapfiles/kml/paddle/grn-blank.png"
+#  point_icon_scale: 0.7
+#  point_labelstyle_scale: 0
+#  polygon_color: 1
+#  timestamp_detail_view: false
+#  wms_transparency: 50
+#  wms_color_range: [-350, 350]
+#  wms_pixel_size: 0.01
+telemetry_settings:
+  field_list:
+    - "Date"
+    - "Time"
+    - "1RSS(dB)"
+    - "2RSS(dB)"
+    - "RQly(%)"
+    - "RSNR(dB)"
+    - "ANT"
+    - "RFMD"
+    - "TPWR(mW)"
+    - "TRSS(dB)"
+    - "TQly(%)"
+    - "TSNR(dB)"
+    - "RxBt(V)"
+    - "Curr(A)"
+    - "Capa(mAh)"
+    - "Bat(%)"
+    - "VSpd(m/s)"
+    - "Alt(m)"
+    - "GPS"
+    - "GSpd(kmh)"
+    - "Hdg(°)"
+    - "Alt(m)"
+    - "Sats"
+    - "Rud"
+    - "Ele"
+    - "Thr"
+    - "Ail"
+    - "P1"
+    - "P2"
+    - "SA"
+    - "SB"
+    - "SC"
+    - "SD"
+    - "SE"
+    - "SF"
+    - "LSW"
+    - "CH1(us)"
+    - "CH2(us)"
+    - "CH3(us)"
+    - "CH4(us)"
+    - "CH5(us)"
+    - "CH6(us)"
+    - "CH7(us)"
+    - "CH8(us)"
+    - "CH9(us)"
+    - "CH10(us)"
+    - "CH11(us)"
+    - "CH12(us)"
+    - "CH13(us)"
+    - "CH14(us)"
+    - "CH15(us)"
+    - "CH16(us)"
+    - "CH17(us)"
+    - "CH18(us)"
+    - "CH19(us)"
+    - "CH20(us)"
+    - "CH21(us)"
+    - "CH22(us)"
+    - "CH23(us)"
+    - "CH24(us)"
+    - "CH25(us)"
+    - "CH26(us)"
+    - "CH27(us)"
+    - "CH28(us)"
+    - "CH29(us)"
+    - "CH30(us)"
+    - "CH31(us)"
+    - "CH32(us)"
+    - "TxBat(V)"
+  field_map:
+    - "Date"
+    - "Time"
+    - "1RSS(dB)"
+    - "2RSS(dB)"
+    - "RQly(%)"
+    - "RSNR(dB)"
+    - "ANT"
+    - "RFMD"
+    - "TPWR(mW)"
+    - "TRSS(dB)"
+    - "TQly(%)"
+    - "TSNR(dB)"
+    - "RxBt(V)"
+    - "Curr(A)"
+    - "Capa(mAh)"
+    - "Bat(%)"
+    - "VSpd(m/s)"
+    - "Vario Alt(m)"
+    - "GPS"
+    - "GSpd(kmh)"
+    - "Hdg(°)"
+    - "GPS Alt(m)"
+    - "Sats"
+    - "Rud"
+    - "Ele"
+    - "Thr"
+    - "Ail"
+    - "P1"
+    - "P2"
+    - "SA"
+    - "SB"
+    - "SC"
+    - "SD"
+    - "SE"
+    - "SF"
+    - "LSW"
+    - "CH1(us)"
+    - "CH2(us)"
+    - "CH3(us)"
+    - "CH4(us)"
+    - "CH5(us)"
+    - "CH6(us)"
+    - "CH7(us)"
+    - "CH8(us)"
+    - "CH9(us)"
+    - "CH10(us)"
+    - "CH11(us)"
+    - "CH12(us)"
+    - "CH13(us)"
+    - "CH14(us)"
+    - "CH15(us)"
+    - "CH16(us)"
+    - "CH17(us)"
+    - "CH18(us)"
+    - "CH19(us)"
+    - "CH20(us)"
+    - "CH21(us)"
+    - "CH22(us)"
+    - "CH23(us)"
+    - "CH24(us)"
+    - "CH25(us)"
+    - "CH26(us)"
+    - "CH27(us)"
+    - "CH28(us)"
+    - "CH29(us)"
+    - "CH30(us)"
+    - "CH31(us)"
+    - "CH32(us)"
+    - "TxBat(V)"
+  xyzLimit:
+    - 0.25
+    - 0.25
+    - 250
+  xyzRounding:
+    - 6
+    - 6
+    - 0
+  validSatRange:
+    - 4
+    - 50
+kml_settings:
+  min_polygon_bbox_width: 0.5 # maximum bounding box width for detailed display. Uses survey convex-hull polygons for anything larger.
+  dataset_type_name: "ELRS Telemetry"
+  netcdf_path_prefix: null #C:\Temp\Geophysics\magnetic_line # Local directory containing files.
+  polygon_color: ffff0000 # Blue
+  polygon_outline: 1
+  line_color: ffff0000 # Blue
+  line_width: 5
+  gps_variable: "GPS"
+  altitude_variable: "Vario Alt(m)" # Variometer altitude field
+  elevation_variable: "GPS Alt(m)" # GPS Elevation
+  colormap_name: rainbow
+  color_count: 256
+  timestamp_detail_view: true
