@@ -25,14 +25,8 @@ class Telemetry2kmlConverter(object):
         self.coordinate_ranges = None
         self.data = []
         with open(settings_file, 'r') as stream:
-            settings = yaml.load(stream, Loader=yaml.Loader)
+            self.settings = yaml.load(stream, Loader=yaml.Loader)
         # print(settings)
-
-        self.field_mappings = settings['telemetry_settings']['field_mappings']
-        self.displayed_fields = settings['telemetry_settings']['displayed_fields']
-        self.xyzLimit = settings['telemetry_settings']['xyzLimit']
-        self.xyzRounding = settings['telemetry_settings']['xyzRounding']
-        self.validSatRange = settings['telemetry_settings']['validSatRange']
 
     def remap_fieldnames(self, fieldnames):
         """
@@ -43,7 +37,7 @@ class Telemetry2kmlConverter(object):
         # print(field_list)
         # print(fieldnames)
 
-        field_mappings = copy.deepcopy(self.field_mappings)
+        field_mappings = copy.deepcopy(self.settings['field_mappings'])
 
         # Scan field list in reverse because we should alway have a GPS "Alt(m)" before the optional Vario "Alt(m)"
         for field in fieldnames[-1::-1]:
@@ -100,7 +94,7 @@ class Telemetry2kmlConverter(object):
             record["GPS Alt(m)"] = float(record["GPS Alt(m)"])
 
             record["Coordinates"] = None
-            if self.validSatRange[0] < record["Sats"] < self.validSatRange[1]:
+            if self.settings['validSatRange'][0] < record["Sats"] < self.settings['validSatRange'][1]:
                 record["Coordinates"] = (
                         [float(ordinate) for ordinate in record["GPS"].split(' ')] + [record["GPS Alt(m)"]])
 
@@ -117,7 +111,7 @@ class Telemetry2kmlConverter(object):
 
             # Discard any coordinates outside the allowable range from the median or any duplicates
             if (any([record['Coordinates'] and abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
-                     self.xyzLimit[coord_index] for coord_index in range(3)]) or
+                     self.settings['xyzLimit'][coord_index] for coord_index in range(3)]) or
                     (last_coordinate and last_coordinate == record['Coordinates'])
             ):
                 record['Coordinates'] = None
@@ -143,7 +137,7 @@ class Telemetry2kmlConverter(object):
                     for empty_index in range(empty_count):
                         self.data[empty_start_index + empty_index]['Coordinates'] = [round(start_coords[coord_index] + (
                                 (end_coords[coord_index] - start_coords[coord_index]) * (empty_index + 1) / float(
-                            empty_count + 1)), self.xyzRounding[coord_index]) for coord_index in range(3)]
+                            empty_count + 1)), self.settings['xyzRounding'][coord_index]) for coord_index in range(3)]
                         self.data[empty_start_index + empty_index]["Interpolated"] = True
                         # print(f'empty_index: {empty_index}, Coordinates: {self.data[empty_start_index + empty_index]['Coordinates']}')
                 empty_start_index = 0
@@ -179,30 +173,33 @@ class Telemetry2kmlConverter(object):
                                                [record.get("Vario Alt(m)") or
                                                 record['Coordinates'][2] - self.coordinate_ranges[2][0]
                                                 ] for record in self.data])
-
-        linestring.style.linestyle.color = simplekml.Color.yellow
         linestring.altitudemode = simplekml.AltitudeMode.relativetoground
+
+        linestring.style.linestyle.color = self.settings['line_style']['color']
+        linestring.style.linestyle.width = self.settings['line_style']['width']
 
         # Create points
         for record in self.data:
             # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
             point = kml.newpoint(
                 name=record["DateTime"].time().isoformat(),
-                description='\n'.join([f'{field_name}: {record[field_name]}' for field_name in self.displayed_fields if
+                description='\n'.join([f'{field_name}: {record[field_name]}' for field_name in self.settings['displayed_fields'] if
                                        record.get(field_name)]),
                 coords=[record['Coordinates'][1::-1] +
                         [record.get("Vario Alt(m)") or record['Coordinates'][2] - self.coordinate_ranges[2][0]]]
             )
 
             point.timestamp.when = record["DateTime"].isoformat()
-            point.style.iconstyle.scale = 0.5
-            point.style.iconstyle.color = simplekml.Color.red if record['Interpolated'] else simplekml.Color.green
-            point.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
-
-            point.style.labelstyle.color = simplekml.Color.yellow
-            point.style.labelstyle.scale = 0.5
-
             point.altitudemode = simplekml.AltitudeMode.relativetoground
+
+            point.style.iconstyle.scale = self.settings['point_style']['icon_scale']
+            point.style.iconstyle.color = (self.settings['point_style']['interp_icon_color']
+                                           if record['Interpolated']
+                                           else self.settings['point_style']['icon_color'])
+            point.style.iconstyle.icon.href = self.settings['point_style']['icon_href']
+
+            point.style.labelstyle.color = self.settings['point_style']['label_color']
+            point.style.labelstyle.scale = self.settings['point_style']['label_scale']
 
         kml.save(kml_output_filename)
 
