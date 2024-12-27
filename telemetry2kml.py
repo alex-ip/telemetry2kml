@@ -181,6 +181,7 @@ class Telemetry2kmlConverter(object):
                                                 ] for record in self.data])
 
         linestring.style.linestyle.color = simplekml.Color.yellow
+        linestring.altitudemode = simplekml.AltitudeMode.relativetoground
 
         # Create points
         for record in self.data:
@@ -200,6 +201,8 @@ class Telemetry2kmlConverter(object):
 
             point.style.labelstyle.color = simplekml.Color.yellow
             point.style.labelstyle.scale = 0.5
+
+            point.altitudemode = simplekml.AltitudeMode.relativetoground
 
         kml.save(kml_output_filename)
 
