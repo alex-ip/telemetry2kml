@@ -113,12 +113,18 @@ class Telemetry2kmlConverter(object):
 
         empty_start_index = 0  # First empty coordinate index in empty range
         empty_end_index = 0  # First non-empty coordinate index after empty range
+        last_coordinate = None
         for index, record in enumerate(self.data):
 
-            # Discard any coordinates outside the allowable range from the median
-            if any([record['Coordinates'] and abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
-                    self.xyzLimit[coord_index] for coord_index in range(3)]):
+            # Discard any coordinates outside the allowable range from the median or any duplicates
+            if (any([record['Coordinates'] and abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
+                     self.xyzLimit[coord_index] for coord_index in range(3)]) or
+                    (last_coordinate and last_coordinate == record['Coordinates'])
+            ):
                 record['Coordinates'] = None
+            else:
+                if record['Coordinates'] is not None:
+                    last_coordinate = record['Coordinates']
 
             if record['Coordinates'] is None:  # Invalid coordinates
                 if not empty_start_index:
@@ -139,16 +145,20 @@ class Telemetry2kmlConverter(object):
                         self.data[empty_start_index + empty_index]['Coordinates'] = [round(start_coords[coord_index] + (
                                 (end_coords[coord_index] - start_coords[coord_index]) * (empty_index + 1) / float(
                             empty_count + 1)), self.xyzRounding[coord_index]) for coord_index in range(3)]
-                        self.data[empty_start_index + empty_index][
-                            "Interpolated"] = True  # print(f'empty_index: {empty_index}, Coordinates: {self.data[empty_start_index + empty_index]['Coordinates']}')
+                        self.data[empty_start_index + empty_index]["Interpolated"] = True
+                        # print(f'empty_index: {empty_index}, Coordinates: {self.data[empty_start_index + empty_index]['Coordinates']}')
                 empty_start_index = 0
                 empty_end_index = 0
 
             # print(f'index: {index}, Sats: {record["Sats"]}, Coordinates: {record["Coordinates"]}')
 
+        # Discard any invalid coordinates at the end
+        if empty_start_index:
+            self.data = self.data[:empty_start_index]
+
         self.coordinate_ranges = [[min([record['Coordinates'][coord_index] for record in self.data]),
-                                   max([record['Coordinates'][coord_index] for record in self.data])] for coord_index in
-                                  range(3)]  # print(self.coordinate_ranges)
+                                   max([record['Coordinates'][coord_index] for record in self.data])]
+                                  for coord_index in range(3)]  # print(self.coordinate_ranges)
 
     def write_kml(self, kml_output_filename=None):
         """
@@ -158,25 +168,35 @@ class Telemetry2kmlConverter(object):
             kml_output_filename = self.input_csv_path.with_suffix(".kml")
 
         kml = simplekml.Kml()
-        # Reverse order of lat & long and change elevation to altitude
+
+        # Create lines
+        # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
         linestring = kml.newlinestring(name=str(self.input_csv_path.stem), description="Flight path",
-                                       coords=[record['Coordinates'][1::-1] + [record['Coordinates'][2] - self.coordinate_ranges[2][0]] for record in
-                                               self.data])
+                                       coords=[record['Coordinates'][1::-1] +
+                                               [record.get("Vario Alt(m)") or
+                                                record['Coordinates'][2] - self.coordinate_ranges[2][0]
+                                                ] for record in self.data])
+
+        linestring.style.linestyle.color = simplekml.Color.yellow
 
         # Create points
         for record in self.data:
-            # Reverse order of lat & long and change elevation to altitude
+            # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
             point = kml.newpoint(
                 name=record["DateTime"].time().isoformat(),
-                description='\n'.join([f'{field_name}: {record[field_name]}' for field_name in self.displayed_fields if record.get(field_name)]),
-                coords=[record['Coordinates'][1::-1] + [record['Coordinates'][2] - self.coordinate_ranges[2][0]]]
+                description='\n'.join([f'{field_name}: {record[field_name]}' for field_name in self.displayed_fields if
+                                       record.get(field_name)]),
+                coords=[record['Coordinates'][1::-1] +
+                        [record.get("Vario Alt(m)") or record['Coordinates'][2] - self.coordinate_ranges[2][0]]]
             )
+
+            point.timestamp.when = record["DateTime"].isoformat()
             point.style.iconstyle.scale = 0.5
+            point.style.iconstyle.color = simplekml.Color.red if record['Interpolated'] else simplekml.Color.green
             point.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
 
-            point.style.labelstyle.color = simplekml.Color.blue
+            point.style.labelstyle.color = simplekml.Color.yellow
             point.style.labelstyle.scale = 0.5
-            point.style.labelstyle.color = simplekml.Color.blue
 
         kml.save(kml_output_filename)
 
