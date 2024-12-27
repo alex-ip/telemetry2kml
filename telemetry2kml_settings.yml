@@ -183,9 +183,48 @@ telemetry_settings:
     - "CH31(us)"
     - "CH32(us)"
     - "TxBat(V)"
+  displayed_fields:
+    - "Index"
+    - "Rud"
+    - "Ele"
+    - "Thr"
+    - "Ail"
+    - "1RSS(dB)"
+    - "2RSS(dB)"
+    - "RQly(%)"
+    - "RSNR(dB)"
+    - "ANT"
+    - "RFMD"
+    - "TPWR(mW)"
+    - "TRSS(dB)"
+    - "TQly(%)"
+    - "TSNR(dB)"
+    - "RxBt(V)"
+    - "Bat(%)"
+    - "VSpd(m/s)"
+    - "Vario Alt(m)"
+    - "Date"
+    - "Time"
+    - "GPS"
+    - "GSpd(kmh)"
+    - "Hdg(°)"
+    - "GPS Alt(m)"
+    - "Sats"
+    - "Coordinates"
+    - "Interpolated"
+    - "P1"
+    - "P2"
+    - "SA"
+    - "SB"
+    - "SC"
+    - "SD"
+    - "SE"
+    - "SF"
+    - "LSW"
+    - "TxBat(V)"
   xyzLimit:
-    - 0.25
-    - 0.25
+    - 0.02
+    - 0.02
     - 250
   xyzRounding:
     - 6
@@ -197,7 +236,6 @@ telemetry_settings:
 kml_settings:
   min_polygon_bbox_width: 0.5 # maximum bounding box width for detailed display. Uses survey convex-hull polygons for anything larger.
   dataset_type_name: "ELRS Telemetry"
-  netcdf_path_prefix: null #C:\Temp\Geophysics\magnetic_line # Local directory containing files.
   polygon_color: ffff0000 # Blue
   polygon_outline: 1
   line_color: ffff0000 # Blue
