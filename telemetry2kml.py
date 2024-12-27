@@ -2,6 +2,7 @@ import csv
 import sys
 from datetime import datetime
 from pathlib import Path
+from pprint import pprint
 
 import numpy as np
 import simplekml
@@ -156,6 +157,9 @@ class Telemetry2kmlConverter(object):
         if empty_start_index:
             self.data = self.data[:empty_start_index]
 
+        # pprint([[record["Index"], record["Coordinates"], record["Interpolated"]] for record in self.data])
+        assert any([record['Coordinates'] for record in self.data]), "No Valid GPS Coordinates found"
+
         self.coordinate_ranges = [[min([record['Coordinates'][coord_index] for record in self.data]),
                                    max([record['Coordinates'][coord_index] for record in self.data])]
                                   for coord_index in range(3)]  # print(self.coordinate_ranges)
@@ -171,7 +175,8 @@ class Telemetry2kmlConverter(object):
 
         # Create lines
         # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
-        linestring = kml.newlinestring(name=str(self.input_csv_path.stem), description="Flight path",
+        linestring = kml.newlinestring(name=f'{self.input_csv_path.stem} Flight Path',
+                                       # description=f'{self.input_csv_path.stem} Flight Path',
                                        coords=[record['Coordinates'][1::-1] +
                                                [record.get("Vario Alt(m)") or
                                                 record['Coordinates'][2] - self.coordinate_ranges[2][0]
