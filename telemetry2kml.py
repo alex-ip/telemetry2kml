@@ -1,3 +1,4 @@
+import copy
 import csv
 import sys
 from datetime import datetime
@@ -27,8 +28,7 @@ class Telemetry2kmlConverter(object):
             settings = yaml.load(stream, Loader=yaml.Loader)
         # print(settings)
 
-        self.field_list = settings['telemetry_settings']['field_list']
-        self.field_map = settings['telemetry_settings']['field_map']
+        self.field_mappings = settings['telemetry_settings']['field_mappings']
         self.displayed_fields = settings['telemetry_settings']['displayed_fields']
         self.xyzLimit = settings['telemetry_settings']['xyzLimit']
         self.xyzRounding = settings['telemetry_settings']['xyzRounding']
@@ -39,21 +39,19 @@ class Telemetry2kmlConverter(object):
         Remaps field names from CSV to position-sensitive non-duplicated names
         """
         new_fieldnames = []
-        field_list = list(self.field_list)
-        field_map = list(self.field_map)
 
         # print(field_list)
         # print(fieldnames)
 
-        for field in fieldnames:
-            # print(field)
-            # Skip any field names not in CSV
-            while field != field_list[0]:
-                field_list.pop(0)
-                field_map.pop(0)
+        field_mappings = copy.deepcopy(self.field_mappings)
 
-            new_fieldnames.append(field_map.pop(0))
-            field_list.pop(0)
+        # Scan field list in reverse because we should alway have a GPS "Alt(m)" before the optional Vario "Alt(m)"
+        for field in fieldnames[-1::-1]:
+            # print(field)
+            if field_mapping := field_mappings.get(field):
+                new_fieldnames.insert(0, field_mapping.pop(-1))
+            else:
+                new_fieldnames.insert(0, field)
 
         return new_fieldnames
 
@@ -215,5 +213,5 @@ if __name__ == '__main__':
     converter.set_coordinates()
     # pprint([[record["Coordinates"], record["Interpolated"]] for record in converter.data])
 
-    converter.write_csv()
+    # converter.write_csv()
     converter.write_kml()
