@@ -61,6 +61,7 @@ line_style:  # Style for flight path
   color: "99009999"  # 50% simplekml.Color.yellow
   width: 1
 point_style:  # Style for telemetry data points
+  label_points: false
   icon_scale: 0.5
   icon_color: "ff008000"  # simplekml.Color.green
   interp_icon_color: "ff0000ff"  # simplekml.Color.red

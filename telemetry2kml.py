@@ -184,7 +184,7 @@ class Telemetry2kmlConverter(object):
         for record in self.data:
             # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
             point = kml.newpoint(
-                name=record["DateTime"].time().isoformat(),
+                name=(record["DateTime"].time().isoformat() if self.settings['point_style']['label_points'] else None),
                 description='\n'.join([f'{field_name}: {record[field_name]}' for field_name in self.settings['displayed_fields'] if
                                        record.get(field_name)]),
                 coords=[record['Coordinates'][:2] +
