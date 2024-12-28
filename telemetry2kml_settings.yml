@@ -1,4 +1,6 @@
 field_mappings:
+  # field_mappings are prioritised from last to first in order to deal with the duplicate field names for vario altitude
+  # and GPS Elevation. GPS Elevtion should always be present but vario altitude (which would occur first) is optional.
   "Alt(m)":
     - "Vario Alt(m)"
     - "GPS Alt(m)"
@@ -44,21 +46,21 @@ displayed_fields:
   - "SF"
   - "LSW"
   - "TxBat(V)"
-xyzLimit:
+xyzLimit:  # NMaximum distance from median value for longitude, latitude and elevation
   - 0.02
   - 0.02
   - 250
-xyzRounding:
+xyzRounding:  # Number of decimal places for longitude, latitude and elevation
   - 6
   - 6
   - 0
-validSatRange:
+validSatRange:  # Min and max number of satellites for a valid coordinate
   - 4
   - 50
-line_style:
+line_style:  # Style for flight path
   color: "99009999"  # 50% simplekml.Color.yellow
   width: 1
-point_style:
+point_style:  # Style for telemetry data points
   icon_scale: 0.5
   icon_color: "ff008000"  # simplekml.Color.green
   interp_icon_color: "ff0000ff"  # simplekml.Color.red

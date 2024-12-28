@@ -94,9 +94,11 @@ class Telemetry2kmlConverter(object):
             record["GPS Alt(m)"] = float(record["GPS Alt(m)"])
 
             record["Coordinates"] = None
+
             if self.settings['validSatRange'][0] < record["Sats"] < self.settings['validSatRange'][1]:
+                # Stoe coordinates in xyz (longitude, latitude elevation) order
                 record["Coordinates"] = (
-                        [float(ordinate) for ordinate in record["GPS"].split(' ')] + [record["GPS Alt(m)"]])
+                        [float(ordinate) for ordinate in record["GPS"].split(' ')[1::-1]] + [record["GPS Alt(m)"]])
 
         median_coords = [
             np.median(np.array([record["Coordinates"][coord_index] for record in self.data if record["Coordinates"]]))
@@ -169,7 +171,7 @@ class Telemetry2kmlConverter(object):
         # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
         linestring = kml.newlinestring(name=f'{self.input_csv_path.stem} Flight Path',
                                        # description=f'{self.input_csv_path.stem} Flight Path',
-                                       coords=[record['Coordinates'][1::-1] +
+                                       coords=[record['Coordinates'][:2] +
                                                [record.get("Vario Alt(m)") or
                                                 record['Coordinates'][2] - self.coordinate_ranges[2][0]
                                                 ] for record in self.data])
@@ -185,7 +187,7 @@ class Telemetry2kmlConverter(object):
                 name=record["DateTime"].time().isoformat(),
                 description='\n'.join([f'{field_name}: {record[field_name]}' for field_name in self.settings['displayed_fields'] if
                                        record.get(field_name)]),
-                coords=[record['Coordinates'][1::-1] +
+                coords=[record['Coordinates'][:2] +
                         [record.get("Vario Alt(m)") or record['Coordinates'][2] - self.coordinate_ranges[2][0]]]
             )
 
