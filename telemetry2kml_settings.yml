@@ -6,6 +6,7 @@ field_mappings:
     - "GPS Alt(m)"
 displayed_fields:
   - "Index"
+  - "Height above Ground (m)"
   - "Ptch(rad)"
   - "Roll(rad)"
   - "Yaw(rad)"

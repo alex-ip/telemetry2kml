@@ -3,7 +3,6 @@ import csv
 import sys
 from datetime import datetime
 from pathlib import Path
-from pprint import pprint
 
 import numpy as np
 import simplekml
@@ -39,7 +38,7 @@ class Telemetry2kmlConverter(object):
 
         field_mappings = copy.deepcopy(self.settings['field_mappings'])
 
-        # Scan field list in reverse because we should alway have a GPS "Alt(m)" before the optional Vario "Alt(m)"
+        # Scan field list in reverse because we should always have a GPS "Alt(m)" before the optional Vario "Alt(m)"
         for field in fieldnames[-1::-1]:
             # print(field)
             if field_mapping := field_mappings.get(field):
@@ -140,6 +139,7 @@ class Telemetry2kmlConverter(object):
                         self.data[empty_start_index + empty_index]['Coordinates'] = [round(start_coords[coord_index] + (
                                 (end_coords[coord_index] - start_coords[coord_index]) * (empty_index + 1) / float(
                             empty_count + 1)), self.settings['xyzRounding'][coord_index]) for coord_index in range(3)]
+
                         self.data[empty_start_index + empty_index]["Interpolated"] = True
                         # print(f'empty_index: {empty_index}, Coordinates: {self.data[empty_start_index + empty_index]['Coordinates']}')
                 empty_start_index = 0
@@ -158,6 +158,11 @@ class Telemetry2kmlConverter(object):
                                    max([record['Coordinates'][coord_index] for record in self.data])]
                                   for coord_index in range(3)]  # print(self.coordinate_ranges)
 
+        # Add calculated field for "Height above Ground (m)"
+        for record in self.data:
+            record["Height above Ground (m)"] = record.get("Vario Alt(m)") or record['Coordinates'][2] - \
+                                                self.coordinate_ranges[2][0]
+
     def write_kml(self, kml_output_filename=None):
         """
         Writes data to KML file
@@ -171,10 +176,10 @@ class Telemetry2kmlConverter(object):
         # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
         linestring = kml.newlinestring(name=f'{self.input_csv_path.stem} Flight Path',
                                        # description=f'{self.input_csv_path.stem} Flight Path',
-                                       coords=[record['Coordinates'][:2] +
-                                               [record.get("Vario Alt(m)") or
-                                                record['Coordinates'][2] - self.coordinate_ranges[2][0]
-                                                ] for record in self.data])
+                                       coords=[record['Coordinates'][:2] + [record["Height above Ground (m)"]]
+                                               for record in self.data
+                                               ]
+                                       )
         linestring.altitudemode = simplekml.AltitudeMode.relativetoground
 
         linestring.style.linestyle.color = self.settings['line_style']['color']
@@ -185,10 +190,10 @@ class Telemetry2kmlConverter(object):
             # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
             point = kml.newpoint(
                 name=(record["DateTime"].time().isoformat() if self.settings['point_style']['label_points'] else None),
-                description='\n'.join([f'{field_name}: {record[field_name]}' for field_name in self.settings['displayed_fields'] if
-                                       record.get(field_name)]),
-                coords=[record['Coordinates'][:2] +
-                        [record.get("Vario Alt(m)") or record['Coordinates'][2] - self.coordinate_ranges[2][0]]]
+                description='\n'.join(
+                    [f'{field_name}: {record[field_name]}' for field_name in self.settings['displayed_fields'] if
+                     record.get(field_name) is not None]),
+                coords=[record['Coordinates'][:2] + [record["Height above Ground (m)"]]]
             )
 
             point.timestamp.when = record["DateTime"].isoformat()
