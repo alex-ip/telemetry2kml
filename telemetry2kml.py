@@ -7,12 +7,21 @@ from pathlib import Path
 import numpy as np
 import simplekml
 import yaml
+from scipy import interpolate
 
 
 class Telemetry2kmlConverter(object):
     """
     Telemetry2kmlConverter class definition
     """
+
+    @staticmethod
+    def datetime_to_float(dt):
+        return datetime.timestamp(dt)
+
+    @staticmethod
+    def float_to_datetime(fl):
+        return datetime.fromtimestamp(fl)
 
     def __init__(self, settings_file='telemetry2kml_settings.yml', debug=False):
         """
@@ -85,7 +94,6 @@ class Telemetry2kmlConverter(object):
             4) discarding duplicate coordinates
             5) discarding any coordinates requiring an impossible speeed
         """
-
         # Only set Coordinates in records with a valid Sats value
         for index, record in enumerate(self.data, start=1):
             record['Index'] = index
@@ -186,47 +194,65 @@ class Telemetry2kmlConverter(object):
 
             # print(record["Index"], record["Point Description"])
 
+        # Discard invalid points at start and end
+        while self.data[0]["Coordinates"] is None:
+            self.data.remove(0)
+
+        while self.data[-1]["Coordinates"] is None:
+            self.data.pop(-1)
+
     def interpolate_coordinates(self):
         """
         Interpolate empty [lat, long, elev] coordinates from t
         This should be done after purging bad GPS data
         """
+        for record in self.data:
+            record["Interpolated"] = record['Coordinates'] is None
 
-        empty_start_index = 0  # First empty coordinate index in empty range
-        empty_end_index = 0  # First non-empty coordinate index after empty range
-        for index, record in enumerate(self.data):
+        txyz_good = np.vstack(
+            [
+                [self.datetime_to_float(record['DateTime'])] + record['Coordinates']
+                for record in self.data
+                if record['Coordinates']
+            ]
+        )
 
-            if record['Coordinates'] is None:  # Invalid coordinates
-                if not empty_start_index:
-                    empty_start_index = index
-            else:  # Valid coordinates
-                record["Interpolated"] = False
-                if not empty_end_index:
-                    empty_end_index = index
+        # Define tx, ty, tz functions
+        interp_functions = [interpolate.interp1d(txyz_good[:, 0], txyz_good[:, coord_index], kind='cubic')
+                            for coord_index in range(1, 4)
+                            ]
 
-                # TODO: Interpolate data at start and end
-                if empty_start_index and empty_end_index:  # Empty range bounded by good coordinates
-                    start_coords = self.data[empty_start_index - 1]['Coordinates']
-                    end_coords = self.data[empty_end_index]['Coordinates']
-                    empty_count = empty_end_index - empty_start_index
+        # Define array of times with missing coordinates
+        missing_times = np.array(
+            [
+                self.datetime_to_float(record['DateTime'])
+                for record in self.data
+                if not record['Coordinates']
+            ]
+        )
 
-                    # print(start_coords, end_coords)
-                    for empty_index in range(empty_count):
-                        self.data[empty_start_index + empty_index]['Coordinates'] = [round(start_coords[coord_index] + (
-                                (end_coords[coord_index] - start_coords[coord_index]) * (empty_index + 1) / float(
-                            empty_count + 1)), self.settings['xyzRounding'][coord_index]) for coord_index in range(3)]
+        # Define list of indices with missing coordinates
+        missing_indices = [
+            index
+            for index, record in enumerate(self.data)
+            if not record['Coordinates']
+        ]
 
-                        self.data[empty_start_index + empty_index]["Interpolated"] = True
-                        # print(f'empty_index: {empty_index}, Coordinates: {self.data[empty_start_index + empty_index]['Coordinates']}')
-                empty_start_index = 0
-                empty_end_index = 0
+        interp_coords = np.array([interp_functions[coord_index](missing_times) for coord_index in range(3)])
 
-            # print(f'index: {index}, Sats: {record["Sats"]}, Coordinates: {record["Coordinates"]}')
+        for index, missing_index in enumerate(missing_indices):
+            # self.data[missing_index]['Coordinates'] = interp_coords[:,index].tolist()
+            self.data[missing_index]['Coordinates'] = [
+                round(interp_coords[:, index].tolist()[coord_index], self.settings["xyzRounding"][coord_index])
+                for coord_index in range(3)
+            ]
 
-        # Discard any invalid coordinates at the end
-        if empty_start_index:
-            self.data = self.data[:empty_start_index]
+        self.set_calculated_values()
 
+    def set_calculated_values(self):
+        """
+        Set calculated field values
+        """
         # pprint([[record["Index"], record["Coordinates"], record["Interpolated"]] for record in self.data])
         assert any([record['Coordinates'] for record in self.data]), "No Valid GPS Coordinates found"
 
@@ -296,9 +322,16 @@ if __name__ == '__main__':
     converter.read_csv(csv_input_file)
 
     converter.clean_coordinates()
-    # pprint([[record["Coordinates"], record["Interpolated"]] for record in converter.data])
+
+    # for record in converter.data:
+    #     print(
+    #         f'index: {record["Index"]}, Coordinates: {record["Coordinates"]}, Interpolated: {record.get("Interpolated")}')
+
     converter.interpolate_coordinates()
-    # pprint([[record["Coordinates"], record["Interpolated"]] for record in converter.data])
+
+    # for record in converter.data:
+    #     print(
+    #         f'index: {record["Index"]}, Coordinates: {record["Coordinates"]}, Interpolated: {record.get("Interpolated")}')
 
     # converter.write_csv()
     converter.write_kml()
