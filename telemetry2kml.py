@@ -76,13 +76,14 @@ class Telemetry2kmlConverter(object):
             # writer.writerows([record.values() for record in self.data])
             writer.writerows([record.values() for record in self.data])
 
-    def set_coordinates(self):
+    def clean_coordinates(self):
         """
-        Set [lat, long, elev] coordinates after repairing bad GPS data by
+        Clean [lat, long, elev] from bad GPS data by
             1) discarding anything with a low or high satellite count
             2) calculating the median lat & long values
             3) discarding anything further than limits from any of the median coordinate values
-            4) interpolating missing coordinates between known coordinates
+            4) discarding duplicate coordinates
+            5) discarding any coordinates requiring an impossible speeed
         """
 
         # Only set Coordinates in records with a valid Sats value
@@ -96,7 +97,7 @@ class Telemetry2kmlConverter(object):
             record["Coordinates"] = None
 
             if self.settings['validSatRange'][0] < record["Sats"] < self.settings['validSatRange'][1]:
-                # Stoe coordinates in xyz (longitude, latitude elevation) order
+                # Store coordinates in xyz (longitude, latitude elevation) order
                 record["Coordinates"] = (
                         [float(ordinate) for ordinate in record["GPS"].split(' ')[1::-1]] + [record["GPS Alt(m)"]])
             else:
@@ -108,8 +109,6 @@ class Telemetry2kmlConverter(object):
 
         # print(median_coords)
 
-        empty_start_index = 0  # First empty coordinate index in empty range
-        empty_end_index = 0  # First non-empty coordinate index after empty range
         last_good_coord_index = None
         for index, record in enumerate(self.data):
 
@@ -119,12 +118,13 @@ class Telemetry2kmlConverter(object):
                 if any([abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
                         self.settings['xyzLimit'][coord_index] for coord_index in
                         range(3)]):
-                    record["Point Description"] = f"Too far from median location {[float(coord) for coord in record['Coordinates']]} (median = {[float(coord) for coord in median_coords]})"
+                    record[
+                        "Point Description"] = f"Too far from median location {[float(coord) for coord in record['Coordinates']]} (median = {[float(coord) for coord in median_coords]})"
                     record['Coordinates'] = None
 
                 # Repeated coordinates
                 elif (last_good_coord_index and self.data[last_good_coord_index]['Coordinates'] ==
-                    record['Coordinates']
+                      record['Coordinates']
                 ):
                     record["Point Description"] = "Duplicate location"
                     record['Coordinates'] = None
@@ -132,6 +132,7 @@ class Telemetry2kmlConverter(object):
                 # Impossible speed
                 elif (last_good_coord_index
                       # Point is impossibly far from last good one
+                      # TODO: Deal with situation where first coordinates are bad and subsequent ones are good
                       and (any([abs(((record['Coordinates'][coord_index] -
                                       self.data[last_good_coord_index]['Coordinates'][
                                           coord_index]) /
@@ -171,11 +172,11 @@ class Telemetry2kmlConverter(object):
                     #       )
 
                     record["Point Description"] = f"Impossible speed: {[abs(((record['Coordinates'][coord_index] -
-                             self.data[last_good_coord_index]['Coordinates'][
-                                 coord_index]) /
-                            (record['DateTime'] - self.data[last_good_coord_index][
-                                'DateTime']).total_seconds()))
-                       for coord_index in range(3)]}"
+                                                                              self.data[last_good_coord_index]['Coordinates'][
+                                                                                  coord_index]) /
+                                                                             (record['DateTime'] - self.data[last_good_coord_index][
+                                                                                 'DateTime']).total_seconds()))
+                                                                        for coord_index in range(3)]}"
 
                     record['Coordinates'] = None
 
@@ -184,6 +185,16 @@ class Telemetry2kmlConverter(object):
                     last_good_coord_index = index
 
             # print(record["Index"], record["Point Description"])
+
+    def interpolate_coordinates(self):
+        """
+        Interpolate empty [lat, long, elev] coordinates from t
+        This should be done after purging bad GPS data
+        """
+
+        empty_start_index = 0  # First empty coordinate index in empty range
+        empty_end_index = 0  # First non-empty coordinate index after empty range
+        for index, record in enumerate(self.data):
 
             if record['Coordinates'] is None:  # Invalid coordinates
                 if not empty_start_index:
@@ -284,7 +295,9 @@ if __name__ == '__main__':
     converter = Telemetry2kmlConverter()
     converter.read_csv(csv_input_file)
 
-    converter.set_coordinates()
+    converter.clean_coordinates()
+    # pprint([[record["Coordinates"], record["Interpolated"]] for record in converter.data])
+    converter.interpolate_coordinates()
     # pprint([[record["Coordinates"], record["Interpolated"]] for record in converter.data])
 
     # converter.write_csv()
