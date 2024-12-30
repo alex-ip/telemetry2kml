@@ -90,6 +90,7 @@ class Telemetry2kmlConverter(object):
             record['Index'] = index
             record['DateTime'] = datetime.strptime(f"{record['Date']} {record['Time']}", '%Y-%m-%d %H:%M:%S.%f')
             record["Sats"] = int(record["Sats"])
+            record["Point Description"] = "Valid GPS"
             record["GPS Alt(m)"] = float(record["GPS Alt(m)"])
 
             record["Coordinates"] = None
@@ -98,6 +99,8 @@ class Telemetry2kmlConverter(object):
                 # Stoe coordinates in xyz (longitude, latitude elevation) order
                 record["Coordinates"] = (
                         [float(ordinate) for ordinate in record["GPS"].split(' ')[1::-1]] + [record["GPS Alt(m)"]])
+            else:
+                record["Point Description"] = f"Bad Satellite count: {record['Sats']}"
 
         median_coords = [
             np.median(np.array([record["Coordinates"][coord_index] for record in self.data if record["Coordinates"]]))
@@ -107,63 +110,80 @@ class Telemetry2kmlConverter(object):
 
         empty_start_index = 0  # First empty coordinate index in empty range
         empty_end_index = 0  # First non-empty coordinate index after empty range
-        last_good_timestamp = None
-        last_good_coordinate = None
+        last_good_coord_index = None
         for index, record in enumerate(self.data):
 
-            # #TODO: REMOVE THIS DEBUG BLOCK
-            # if (record['Coordinates'] and last_good_coordinate and last_good_timestamp
-            #     and not (
-            #             # Too far from median
-            #             any([abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
-            #                  self.settings['xyzLimit'][coord_index] for coord_index in
-            #                  range(3)])
-            #
-            #             # Repeated coordinates
-            #             or (last_good_coordinate and last_good_coordinate == record['Coordinates']))
-            # ):
-            #     print(f'Index: {record["Index"]}',
-            #           f'Delta t: {(record["DateTime"] - last_good_timestamp).total_seconds()}',
-            #           '[Deltas]: ',
-            #           [abs((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]))
-            #            for coord_index in range(3)],
-            #           '[Deltas]/t: ',
-            #           [abs(((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]) /
-            #                 (record['DateTime'] - last_good_timestamp).total_seconds()))
-            #            for coord_index in range(3)],
-            #           'Boolean: ',
-            #           [abs(((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]) /
-            #                 (record['DateTime'] - last_good_timestamp).total_seconds()))
-            #            >= self.settings['xyzDeltaLimit'][coord_index]
-            #            for coord_index in range(3)]
-            #           )
-
             # Discard any coordinates outside the allowable range from the median or any duplicates
-            if (record['Coordinates']
-                and (
-                    # Too far from median
-                    any([abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
-                         self.settings['xyzLimit'][coord_index] for coord_index in
-                         range(3)])
+            if record['Coordinates'] is not None:
+                # Too far from median
+                if any([abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
+                        self.settings['xyzLimit'][coord_index] for coord_index in
+                        range(3)]):
+                    record["Point Description"] = f"Too far from median location {[float(coord) for coord in record['Coordinates']]} (median = {[float(coord) for coord in median_coords]})"
+                    record['Coordinates'] = None
 
-                    # Repeated coordinates
-                    or (last_good_coordinate and last_good_coordinate == record['Coordinates'])
+                # Repeated coordinates
+                elif (last_good_coord_index and self.data[last_good_coord_index]['Coordinates'] ==
+                    record['Coordinates']
+                ):
+                    record["Point Description"] = "Duplicate location"
+                    record['Coordinates'] = None
 
-                    # Impossible speed
-                    or (last_good_coordinate and last_good_timestamp
-                        and any(
-                        [abs(((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]) /
-                              (record['DateTime'] - last_good_timestamp).total_seconds()))
-                         >= self.settings['xyzDeltaLimit'][coord_index]
-                         for coord_index in range(3)])
-                    )
-                )
-            ):
-                record['Coordinates'] = None
-            else:
-                if record['Coordinates'] is not None:
-                    last_good_coordinate = record['Coordinates']
-                    last_good_timestamp = record['DateTime']
+                # Impossible speed
+                elif (last_good_coord_index
+                      # Point is impossibly far from last good one
+                      and (any([abs(((record['Coordinates'][coord_index] -
+                                      self.data[last_good_coord_index]['Coordinates'][
+                                          coord_index]) /
+                                     (record['DateTime'] - self.data[last_good_coord_index][
+                                         'DateTime']).total_seconds()))
+                                >= self.settings['xyzDeltaLimit'][coord_index]
+                                for coord_index in range(3)]
+                               )
+                      )
+                ):
+
+                    # #TODO: Remove this debug print
+                    # print(f"index: {index}' "
+                    #       'Deltas: ',
+                    #       [abs(record['Coordinates'][coord_index] -
+                    #              self.data[last_good_coord_index]['Coordinates'][
+                    #                  coord_index])
+                    #        for coord_index in range(3)],
+                    #       'delta t: ',
+                    #       (record['DateTime'] - self.data[last_good_coord_index][
+                    #           'DateTime']).total_seconds(),
+                    #       'deltas/t: ',
+                    #       [abs(((record['Coordinates'][coord_index] -
+                    #              self.data[last_good_coord_index]['Coordinates'][
+                    #                  coord_index]) /
+                    #             (record['DateTime'] - self.data[last_good_coord_index][
+                    #                 'DateTime']).total_seconds()))
+                    #        for coord_index in range(3)],
+                    #       'Boolean: ',
+                    #       [abs(((record['Coordinates'][coord_index] -
+                    #              self.data[last_good_coord_index]['Coordinates'][
+                    #                  coord_index]) /
+                    #             (record['DateTime'] - self.data[last_good_coord_index][
+                    #                 'DateTime']).total_seconds()))
+                    #        >= self.settings['xyzDeltaLimit'][coord_index]
+                    #        for coord_index in range(3)]
+                    #       )
+
+                    record["Point Description"] = f"Impossible speed: {[abs(((record['Coordinates'][coord_index] -
+                             self.data[last_good_coord_index]['Coordinates'][
+                                 coord_index]) /
+                            (record['DateTime'] - self.data[last_good_coord_index][
+                                'DateTime']).total_seconds()))
+                       for coord_index in range(3)]}"
+
+                    record['Coordinates'] = None
+
+                # Valid coordinate
+                elif record['Coordinates'] is not None:
+                    last_good_coord_index = index
+
+            print(record["Index"], record["Point Description"])
 
             if record['Coordinates'] is None:  # Invalid coordinates
                 if not empty_start_index:
@@ -201,7 +221,9 @@ class Telemetry2kmlConverter(object):
 
         self.coordinate_ranges = [[min([record['Coordinates'][coord_index] for record in self.data]),
                                    max([record['Coordinates'][coord_index] for record in self.data])]
-                                  for coord_index in range(3)]  # print(self.coordinate_ranges)
+                                  for coord_index in range(3)]
+
+        # print(self.coordinate_ranges)
 
         # Add calculated field for "Height above Ground (m)"
         for record in self.data:
@@ -265,5 +287,5 @@ if __name__ == '__main__':
     converter.set_coordinates()
     # pprint([[record["Coordinates"], record["Interpolated"]] for record in converter.data])
 
-    converter.write_csv()
+    # converter.write_csv()
     converter.write_kml()

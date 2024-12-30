@@ -50,7 +50,7 @@ displayed_fields:
 xyzLimit:  # Maximum distance from median value for longitude, latitude and elevation
   - 0.02
   - 0.02
-  - 250
+  - 1000
 xyzDeltaLimit:  # Maximum distance per second between for points for longitude, latitude and elevation
   - 0.0005
   - 0.0005
