@@ -183,7 +183,7 @@ class Telemetry2kmlConverter(object):
                 elif record['Coordinates'] is not None:
                     last_good_coord_index = index
 
-            print(record["Index"], record["Point Description"])
+            # print(record["Index"], record["Point Description"])
 
             if record['Coordinates'] is None:  # Invalid coordinates
                 if not empty_start_index:
