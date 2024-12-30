@@ -107,18 +107,63 @@ class Telemetry2kmlConverter(object):
 
         empty_start_index = 0  # First empty coordinate index in empty range
         empty_end_index = 0  # First non-empty coordinate index after empty range
-        last_coordinate = None
+        last_good_timestamp = None
+        last_good_coordinate = None
         for index, record in enumerate(self.data):
 
+            # #TODO: REMOVE THIS DEBUG BLOCK
+            # if (record['Coordinates'] and last_good_coordinate and last_good_timestamp
+            #     and not (
+            #             # Too far from median
+            #             any([abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
+            #                  self.settings['xyzLimit'][coord_index] for coord_index in
+            #                  range(3)])
+            #
+            #             # Repeated coordinates
+            #             or (last_good_coordinate and last_good_coordinate == record['Coordinates']))
+            # ):
+            #     print(f'Index: {record["Index"]}',
+            #           f'Delta t: {(record["DateTime"] - last_good_timestamp).total_seconds()}',
+            #           '[Deltas]: ',
+            #           [abs((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]))
+            #            for coord_index in range(3)],
+            #           '[Deltas]/t: ',
+            #           [abs(((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]) /
+            #                 (record['DateTime'] - last_good_timestamp).total_seconds()))
+            #            for coord_index in range(3)],
+            #           'Boolean: ',
+            #           [abs(((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]) /
+            #                 (record['DateTime'] - last_good_timestamp).total_seconds()))
+            #            >= self.settings['xyzDeltaLimit'][coord_index]
+            #            for coord_index in range(3)]
+            #           )
+
             # Discard any coordinates outside the allowable range from the median or any duplicates
-            if (any([record['Coordinates'] and abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
-                     self.settings['xyzLimit'][coord_index] for coord_index in range(3)]) or
-                    (last_coordinate and last_coordinate == record['Coordinates'])
+            if (record['Coordinates']
+                and (
+                    # Too far from median
+                    any([abs(record['Coordinates'][coord_index] - median_coords[coord_index]) >=
+                         self.settings['xyzLimit'][coord_index] for coord_index in
+                         range(3)])
+
+                    # Repeated coordinates
+                    or (last_good_coordinate and last_good_coordinate == record['Coordinates'])
+
+                    # Impossible speed
+                    or (last_good_coordinate and last_good_timestamp
+                        and any(
+                        [abs(((record['Coordinates'][coord_index] - last_good_coordinate[coord_index]) /
+                              (record['DateTime'] - last_good_timestamp).total_seconds()))
+                         >= self.settings['xyzDeltaLimit'][coord_index]
+                         for coord_index in range(3)])
+                    )
+                )
             ):
                 record['Coordinates'] = None
             else:
                 if record['Coordinates'] is not None:
-                    last_coordinate = record['Coordinates']
+                    last_good_coordinate = record['Coordinates']
+                    last_good_timestamp = record['DateTime']
 
             if record['Coordinates'] is None:  # Invalid coordinates
                 if not empty_start_index:
@@ -220,5 +265,5 @@ if __name__ == '__main__':
     converter.set_coordinates()
     # pprint([[record["Coordinates"], record["Interpolated"]] for record in converter.data])
 
-    # converter.write_csv()
+    converter.write_csv()
     converter.write_kml()

@@ -47,9 +47,13 @@ displayed_fields:
   - "SF"
   - "LSW"
   - "TxBat(V)"
-xyzLimit:  # NMaximum distance from median value for longitude, latitude and elevation
+xyzLimit:  # Maximum distance from median value for longitude, latitude and elevation
   - 0.02
   - 0.02
+  - 250
+xyzDeltaLimit:  # Maximum distance per second between for points for longitude, latitude and elevation
+  - 0.0005
+  - 0.0005
   - 250
 xyzRounding:  # Number of decimal places for longitude, latitude and elevation
   - 6
