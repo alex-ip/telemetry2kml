@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import simplekml
 import yaml
-from scipy import interpolate
+from scipy.interpolate import PchipInterpolator
 
 
 class Telemetry2kmlConverter(object):
@@ -196,7 +196,7 @@ class Telemetry2kmlConverter(object):
 
         # Discard invalid points at start and end
         while self.data[0]["Coordinates"] is None:
-            self.data.remove(0)
+            self.data.pop(0)
 
         while self.data[-1]["Coordinates"] is None:
             self.data.pop(-1)
@@ -218,12 +218,16 @@ class Telemetry2kmlConverter(object):
         )
 
         # Define tx, ty, tz functions
-        interp_functions = [interpolate.interp1d(txyz_good[:, 0], txyz_good[:, coord_index], kind='cubic')
-                            for coord_index in range(1, 4)
-                            ]
+        interp_functions = [
+            PchipInterpolator(
+                txyz_good[:, 0], # good times
+                txyz_good[:, coord_index], # good x,y, or z coordinates
+            )
+            for coord_index in range(1, 4)
+        ]
 
         # Define array of times with missing coordinates
-        missing_times = np.array(
+        interp_times = np.array(
             [
                 self.datetime_to_float(record['DateTime'])
                 for record in self.data
@@ -232,26 +236,26 @@ class Telemetry2kmlConverter(object):
         )
 
         # Define list of indices with missing coordinates
-        missing_indices = [
+        interp_indices = [
             index
             for index, record in enumerate(self.data)
             if not record['Coordinates']
         ]
 
-        interp_coords = np.array([interp_functions[coord_index](missing_times) for coord_index in range(3)])
+        interp_coords = np.array([interp_functions[coord_index](interp_times) for coord_index in range(3)])
 
-        for index, missing_index in enumerate(missing_indices):
-            # self.data[missing_index]['Coordinates'] = interp_coords[:,index].tolist()
-            self.data[missing_index]['Coordinates'] = [
-                round(interp_coords[:, index].tolist()[coord_index], self.settings["xyzRounding"][coord_index])
-                for coord_index in range(3)
-            ]
+        for index, interp_index in enumerate(interp_indices):
+            self.data[interp_index]['Coordinates'] = interp_coords[:,index].tolist()
+            # self.data[interp_index]['Coordinates'] = [
+            #     round(interp_coords[:, index].tolist()[coord_index], self.settings["xyzRounding"][coord_index])
+            #     for coord_index in range(3)
+            # ]
 
         self.set_calculated_values()
 
     def set_calculated_values(self):
         """
-        Set calculated field values
+        Set calculated field values - call this after interpolation
         """
         # pprint([[record["Index"], record["Coordinates"], record["Interpolated"]] for record in self.data])
         assert any([record['Coordinates'] for record in self.data]), "No Valid GPS Coordinates found"
