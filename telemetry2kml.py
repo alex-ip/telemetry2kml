@@ -245,11 +245,11 @@ class Telemetry2kmlConverter(object):
         interp_coords = np.array([interp_functions[coord_index](interp_times) for coord_index in range(3)])
 
         for index, interp_index in enumerate(interp_indices):
-            self.data[interp_index]['Coordinates'] = interp_coords[:,index].tolist()
-            # self.data[interp_index]['Coordinates'] = [
-            #     round(interp_coords[:, index].tolist()[coord_index], self.settings["xyzRounding"][coord_index])
-            #     for coord_index in range(3)
-            # ]
+            # self.data[interp_index]['Coordinates'] = interp_coords[:,index].tolist()
+            self.data[interp_index]['Coordinates'] = [
+                round(interp_coords[:, index].tolist()[coord_index], self.settings["xyzRounding"][coord_index])
+                for coord_index in range(3)
+            ]
 
         self.set_calculated_values()
 
