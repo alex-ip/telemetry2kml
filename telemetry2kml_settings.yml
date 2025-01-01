@@ -68,7 +68,7 @@ line_style:  # Style for flight path
 point_style:  # Style for telemetry data points
   label_points: false
   icon_scale: 0.5
-  icon_color: "ff008000"  # simplekml.Color.green
+  icon_color: "ff00ffff"  # simplekml.Color.yellow
   interp_icon_color: "ff0000ff"  # simplekml.Color.red
   icon_href: "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
   label_color: "ff00ffff"  # simplekml.Color.yellow
