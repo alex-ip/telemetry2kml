@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import simplekml
 import yaml
-from scipy.interpolate import PchipInterpolator, CubicSpline
+from scipy.interpolate import PchipInterpolator
 
 
 class Telemetry2kmlConverter(object):
@@ -103,14 +103,15 @@ class Telemetry2kmlConverter(object):
             record['DateTime'] = datetime.strptime(f"{record['Date']} {record['Time']}", '%Y-%m-%d %H:%M:%S.%f')
             record["Sats"] = int(record["Sats"])
             record["Point Description"] = "Valid GPS"
-            record["GPS Alt(m)"] = float(record["GPS Alt(m)"])
 
             record["Coordinates"] = None
 
             if self.settings['validSatRange'][0] < record["Sats"] < self.settings['validSatRange'][1]:
-                # Store coordinates in xyz (longitude, latitude elevation) order
+                # Store coordinates in xyz (longitude, latitude elevation) order. Prefer Vario alt over GPS alt.
                 record["Coordinates"] = (
-                        [float(ordinate) for ordinate in record["GPS"].split(' ')[1::-1]] + [record["GPS Alt(m)"]])
+                        [float(ordinate) for ordinate in record["GPS"].split(' ')[1::-1]] +
+                        [float(record.get("Vario Alt(m)") or record.get("GPS Alt(m)"))]
+                )
             else:
                 record["Point Description"] = f"Bad Satellite count: {record['Sats']}"
 
@@ -133,9 +134,9 @@ class Telemetry2kmlConverter(object):
                         "Point Description"] = f"Too far from median location {[float(coord) for coord in record['Coordinates']]} (median = {[float(coord) for coord in median_coords]})"
                     record['Coordinates'] = None
 
-                # Repeated coordinates
-                elif (last_good_coord_index and self.data[last_good_coord_index]['Coordinates'] ==
-                      record['Coordinates']
+                # Repeated XY coordinates
+                elif (last_good_coord_index and self.data[last_good_coord_index]['Coordinates'][:2] ==
+                      record['Coordinates'][:2]
                 ):
                     record["Point Description"] = "Duplicate location"
                     record['Coordinates'] = None
@@ -222,10 +223,9 @@ class Telemetry2kmlConverter(object):
 
         # Define tx, ty, tz functions
         interp_functions = [
-            CubicSpline(
+            PchipInterpolator(
                 txyz_good[:, 0], # good times
                 txyz_good[:, coord_index], # good x,y, or z coordinates
-                bc_type='natural'
             )
             for coord_index in range(1, 4)
         ]
