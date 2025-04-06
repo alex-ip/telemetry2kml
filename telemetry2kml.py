@@ -73,6 +73,8 @@ class Telemetry2kmlConverter(object):
 
             self.input_csv_paths.append(Path(csv_filename))
 
+        assert len(self.data), 'No data found'
+        print(f'{len(self.data)} points read from {len(self.input_csv_paths)} CSV file(s)')
         # pprint(self.data)
 
     def write_csv(self, csv_output_filename=None):
