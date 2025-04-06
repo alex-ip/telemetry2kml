@@ -1,5 +1,6 @@
 import copy
 import csv
+import glob
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -29,7 +30,7 @@ class Telemetry2kmlConverter(object):
         @param settings_file: Settings file. Default is 'telemetry2kml_settings.yml'
         @param debug: Boolean parameter used to turn debug output on/off
         """
-        self.input_csv_path = None
+        self.input_csv_paths = []
         self.coordinate_ranges = None
         self.data = []
         with open(settings_file, 'r') as stream:
@@ -57,18 +58,20 @@ class Telemetry2kmlConverter(object):
 
         return new_fieldnames
 
-    def read_csv(self, csv_filename):
+    def read_csv(self, csv_filenames):
         """
         Reads data from CSV file into list of dicts
         """
-        with open(csv_filename, 'r') as csvfile:
-            reader = csv.reader(csvfile)
-            fieldnames = self.remap_fieldnames(next(reader))
-            # print(fieldnames)
+        self.data = []
+        for csv_filename in csv_filenames:
+            with open(csv_filename, 'r') as csvfile:
+                reader = csv.reader(csvfile)
+                fieldnames = self.remap_fieldnames(next(reader))
+                # print(fieldnames)
 
-            self.data = [dict(zip(fieldnames, row)) for row in reader]
+                self.data += [dict(zip(fieldnames, row)) for row in reader]
 
-        self.input_csv_path = Path(csv_filename)
+            self.input_csv_paths.append(Path(csv_filename))
 
         # pprint(self.data)
 
@@ -275,14 +278,14 @@ class Telemetry2kmlConverter(object):
         """
         Writes data to KML file
         """
-        if not kml_output_filename and self.input_csv_path:
-            kml_output_filename = self.input_csv_path.with_suffix(".kml")
+        if not kml_output_filename and self.input_csv_paths:
+            kml_output_filename = self.input_csv_paths[-1].with_suffix(".kml")
 
         kml = simplekml.Kml()
 
         # Create lines
         # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
-        linestring = kml.newlinestring(name=f'{self.input_csv_path.stem} Flight Path',
+        linestring = kml.newlinestring(name=f'{self.input_csv_paths[-1].stem} Flight Path',
                                        # description=f'{self.input_csv_path.stem} Flight Path',
                                        coords=[record['Coordinates'][:2] + [record["Height above Ground (m)"]]
                                                for record in self.data
@@ -320,10 +323,15 @@ class Telemetry2kmlConverter(object):
 
 
 if __name__ == '__main__':
-    csv_input_file = sys.argv[1]
+    csv_input_files = []
+    csv_input_paths = sys.argv[1:]
+    for csv_input_path in csv_input_paths:
+        csv_input_files += glob.glob(csv_input_path)
+
+    print(f'Loading { csv_input_files}')
 
     converter = Telemetry2kmlConverter()
-    converter.read_csv(csv_input_file)
+    converter.read_csv(csv_input_files)
 
     converter.clean_coordinates()
 
