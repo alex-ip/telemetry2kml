@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import simplekml
 import yaml
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import PchipInterpolator, CubicSpline
 
 
 class Telemetry2kmlConverter(object):
@@ -222,9 +222,10 @@ class Telemetry2kmlConverter(object):
 
         # Define tx, ty, tz functions
         interp_functions = [
-            PchipInterpolator(
+            CubicSpline(
                 txyz_good[:, 0], # good times
                 txyz_good[:, coord_index], # good x,y, or z coordinates
+                bc_type='natural'
             )
             for coord_index in range(1, 4)
         ]
@@ -271,8 +272,7 @@ class Telemetry2kmlConverter(object):
 
         # Add calculated field for "Height above Ground (m)"
         for record in self.data:
-            record["Height above Ground (m)"] = record.get("Vario Alt(m)") or record['Coordinates'][2] - \
-                                                self.coordinate_ranges[2][0]
+            record["Height above Ground (m)"] = record['Coordinates'][2] - self.coordinate_ranges[2][0]
 
     def write_kml(self, kml_output_filename=None):
         """
@@ -296,14 +296,17 @@ class Telemetry2kmlConverter(object):
         linestring.style.linestyle.color = self.settings['line_style']['color']
         linestring.style.linestyle.width = self.settings['line_style']['width']
 
+        # Determine displayed fields which actually exist in this data
+        displayed_fields = [field_name for field_name in self.settings['displayed_fields']
+                            if field_name in self.data[0].keys()]
+
         # Create points
         for record in self.data:
             # Reverse order of lat & long and change elevation to altitude preferencing "Vario Alt(m)"
             point = kml.newpoint(
                 name=(record["DateTime"].time().isoformat() if self.settings['point_style']['label_points'] else None),
                 description='\n'.join(
-                    [f'{field_name}: {record[field_name]}' for field_name in self.settings['displayed_fields'] if
-                     record.get(field_name) is not None]),
+                    [f'{field_name}: {record[field_name]}' for field_name in displayed_fields]),
                 coords=[record['Coordinates'][:2] + [record["Height above Ground (m)"]]]
             )
 
