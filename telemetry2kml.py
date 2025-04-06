@@ -1,6 +1,7 @@
 import copy
 import csv
 import glob
+import os.path
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -24,12 +25,13 @@ class Telemetry2kmlConverter(object):
     def float_to_datetime(fl):
         return datetime.fromtimestamp(fl)
 
-    def __init__(self, settings_file='telemetry2kml_settings.yml', debug=False):
+    def __init__(self, settings_file=None, debug=False):
         """
         Constructor for Telemetry2kmlConverter class
         @param settings_file: Settings file. Default is 'telemetry2kml_settings.yml'
         @param debug: Boolean parameter used to turn debug output on/off
         """
+        settings_file = settings_file or os.path.join(os.path.dirname(os.path.realpath(__file__)), 'telemetry2kml_settings.yml')
         self.input_csv_paths = []
         self.coordinate_ranges = None
         self.data = []
@@ -333,7 +335,9 @@ if __name__ == '__main__':
     for csv_input_path in csv_input_paths:
         csv_input_files += glob.glob(csv_input_path)
 
-    print(f'Loading { csv_input_files}')
+    csv_input_files = sorted(csv_input_files)
+
+    # print(f'Loading { csv_input_files}')
 
     converter = Telemetry2kmlConverter()
     converter.read_csv(csv_input_files)

@@ -37,5 +37,7 @@
 
 @set "PATH=%VIRTUAL_ENV%\Scripts;%PATH%"
 
+cd "C:\Users\alex\OneDrive\Documents\Python Scripts\telemetry2kml"
+
 "C:\Users\alex\OneDrive\Documents\Python Scripts\telemetry2kml\venv\Scripts\python.exe" "C:\Users\alex\OneDrive\Documents\Python Scripts\telemetry2kml\telemetry2kml.py" %*
 pause
